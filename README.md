@@ -19,6 +19,11 @@
     ``` python
     from turn import TurnClient
     
+    turn_client = TurnClient(token={optionally add your token here})
+
     # Get a user's whatsapp id
-    TurnClient(token={optionally add your token here}).contacts.get_whatsapp_id('123456')
+    wa_id = turn_client.contacts.get_whatsapp_id('123456')
+
+    # Send a message
+    turn_client.messages.send_text(wa_id, 'Hello')
     ```
