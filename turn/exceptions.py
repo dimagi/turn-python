@@ -1,0 +1,2 @@
+class WhatsAppContactNotFound(Exception):
+    pass
