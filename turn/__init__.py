@@ -68,9 +68,9 @@ class TurnClient:
 
 
 class TurnBusinessManagementRequest:
-    base_url = "https://whatsapp.turn.io/v3.3/"
+    base_url = "https://whatsapp.turn.io/v3.3"
     endpoint_name = None
-    method = "GET"
+    method = None
 
     def __init__(self, business_id, token):
         self.business_id = business_id
@@ -81,21 +81,59 @@ class TurnBusinessManagementRequest:
             "access_token": self.token
         }
 
-    def do_request(self):
+    def do_request(self, data=None):
         return requests.request(
             self.method,
-            f"{self.base_url}{self.business_id}/{self.endpoint_name}",
-            params=self.params()
+            f"{self.base_url}/{self.business_id}/{self.endpoint_name}",
+            # Only send data if passed in, but if it's a query that
+            # needs the data field, then auth has to be in here and not params
+            data=data if data is not None else None,
+            params=self.params() if data is None else None
         )
 
 
 class TurnMessageTemplates(TurnBusinessManagementRequest):
     endpoint_name = "message_templates"
 
-    # TODO: is there a way to get business_id from other data?
     def get_message_templates(self):
+        self.method = 'GET'
         response = self.do_request()
         print(response.json())
+
+    def create_message_template(self, name, category, header=None, body=None, footer=None):
+        self.method = 'POST'
+
+        components = []
+
+        if header:
+            components.append({
+                "type": "HEADER",
+                "text": header
+            })
+
+        if body:
+            components.append({
+                "type": "BODY",
+                "text": body
+            })
+
+        if footer:
+            components.append({
+                "type": "FOOTER",
+                "text": footer
+            })
+
+        response = self.do_request(
+            data={
+                "name": name,
+                "category": category,
+                "components": json.dumps(components),
+                "access_token": self.token,
+                "language": "en_US"
+            }
+        )
+
+        print(response)
 
 
 class TurnBusinessManagementClient:
