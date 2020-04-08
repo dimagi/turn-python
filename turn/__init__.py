@@ -60,9 +60,46 @@ class TurnMessages(TurnRequest):
             raise WhatsAppContactNotFound
 
 
-
 class TurnClient:
     def __init__(self, token=None):
         token = token or os.environ.get("TURN_AUTH_TOKEN")
         self.contacts = TurnContacts(token)
         self.messages = TurnMessages(token)
+
+
+class TurnBusinessManagementRequest:
+    base_url = "https://whatsapp.turn.io/v3.3/"
+    endpoint_name = None
+    method = "GET"
+
+    def __init__(self, business_id, token):
+        self.business_id = business_id
+        self.token = token
+
+    def params(self):
+        return {
+            "access_token": self.token
+        }
+
+    def do_request(self):
+        return requests.request(
+            self.method,
+            f"{self.base_url}{self.business_id}/{self.endpoint_name}",
+            params=self.params()
+        )
+
+
+class TurnMessageTemplates(TurnBusinessManagementRequest):
+    endpoint_name = "message_templates"
+
+    # TODO: is there a way to get business_id from other data?
+    def get_message_templates(self):
+        response = self.do_request()
+        print(response.json())
+
+
+class TurnBusinessManagementClient:
+    def __init__(self, business_id=None, token=None):
+        business_id = business_id or os.environ.get("TURN_BUSINESS_ID")
+        token = token or os.environ.get("TURN_BUSINESS_AUTH_TOKEN")
+        self.message_templates = TurnMessageTemplates(business_id, token)
