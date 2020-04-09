@@ -98,7 +98,11 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
     def get_message_templates(self):
         self.method = 'GET'
         response = self.do_request()
-        print(response.json())
+
+        if response.status_code == requests.codes.ok:
+            return response.json()["data"]
+        else:
+            raise Exception(response.json())
 
     def create_message_template(self, name, category, header=None, body=None, footer=None):
         self.method = 'POST'
@@ -133,7 +137,10 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
             }
         )
 
-        print(response)
+        if response.status_code == requests.codes.created:
+            return response.json()["id"]
+        else:
+            raise Exception(response.json())
 
 
 class TurnBusinessManagementClient:
