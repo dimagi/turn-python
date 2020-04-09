@@ -59,6 +59,28 @@ class TurnMessages(TurnRequest):
         elif response.status_code == requests.codes.not_found:
             raise WhatsAppContactNotFound
 
+    def send_templated_message(self, whatsapp_id, namespace, name, language, params=[]):
+        response = self.do_request(
+            data={
+                "to": whatsapp_id,
+                "type": "hsm",
+                "hsm": {
+                    "namespace": namespace,
+                    "element_name": name,
+                    "language": {
+                        "policy": "fallback",
+                        "code": language
+                    },
+                    "localizable_params": params
+                }
+            }
+        )
+
+        if response.status_code == requests.codes.ok:
+            return response.json()["messages"][0]["id"]
+        elif response.status_code == requests.codes.not_found:
+            raise WhatsAppContactNotFound
+
 
 class TurnClient:
     def __init__(self, token=None):
