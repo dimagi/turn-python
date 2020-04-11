@@ -59,7 +59,27 @@ class TurnMessages(TurnRequest):
         elif response.status_code == requests.codes.not_found:
             raise WhatsAppContactNotFound
 
-    def send_templated_message(self, whatsapp_id, namespace, name, language, params=[]):
+    def send_templated_message(self, whatsapp_id, namespace, name, language, template_params=[]):
+        """
+        whatsapp_id: The whatsapp_id or whatsapp_group_id to send the message to.
+
+        namespace: The template namespace for this template (TODO: should this be a stored value?).
+        You can find this in in the API & Webhooks > Generate API username and password
+        on Turn.
+        TODO: Move this up to the client itself.
+
+        name: The name of the template to send.
+
+        langauge: Specify language code to use for this template.
+        This must match exactly, so be careful with distinction of cases
+        such as en vs en_US.
+
+        template_params: A list of the strings to use for filling in the template.
+        Currently does not support currency or date_time params.
+        """
+
+        localizable_params = [{"default": param} for param in template_params]
+
         response = self.do_request(
             data={
                 "to": whatsapp_id,
@@ -68,10 +88,9 @@ class TurnMessages(TurnRequest):
                     "namespace": namespace,
                     "element_name": name,
                     "language": {
-                        "policy": "fallback",
                         "code": language
                     },
-                    "localizable_params": params
+                    "localizable_params": localizable_params
                 }
             }
         )
@@ -126,28 +145,23 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
         else:
             raise Exception(response.json())
 
-    def create_message_template(self, name, category, header=None, body=None, footer=None):
+    def create_message_template(self, name, category, body):
+        """
+        name: This field is used to identify the template when sending later.
+
+        category: See docs for valid category options.
+        https://whatsapp.turn.io/docs/index.html#message-template-api
+
+        body: Text for body of the template.
+        """
         self.method = 'POST'
 
-        components = []
-
-        if header:
-            components.append({
-                "type": "HEADER",
-                "text": header
-            })
-
-        if body:
-            components.append({
-                "type": "BODY",
-                "text": body
-            })
-
-        if footer:
-            components.append({
-                "type": "FOOTER",
-                "text": footer
-            })
+        # NOTE: Turn only supports the body component, and doesn't allow
+        # header or footer components to be sent.
+        components = [{
+            "type": "BODY",
+            "text": body
+        }]
 
         response = self.do_request(
             data={
