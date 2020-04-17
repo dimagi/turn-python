@@ -88,7 +88,8 @@ class TurnMessages(TurnRequest):
                     "namespace": namespace,
                     "element_name": name,
                     "language": {
-                        "code": language
+                        "code": language,
+                        "policy": "deterministic",
                     },
                     "localizable_params": localizable_params
                 }
