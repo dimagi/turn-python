@@ -2,7 +2,7 @@ import os
 import requests
 import json
 
-from turn.exceptions import WhatsAppContactNotFound
+from turn.exceptions import *
 
 
 class TurnRequest:
@@ -26,6 +26,14 @@ class TurnRequest:
             headers=self.headers(),
             data=json.dumps(data) if data is not None else None,
         )
+
+    def collect_error_strings(self, response):
+        if "errors" in response.json():
+            return ', '.join([
+                error["details"] for error in response.json()["errors"]
+            ])
+        else:
+            return ""
 
 
 class TurnContacts(TurnRequest):
@@ -54,10 +62,37 @@ class TurnMessages(TurnRequest):
                 "text": {"body": text}
             }
         )
-        if response.status_code == requests.codes.ok:
-            return response.json()["messages"][0]["id"]
-        elif response.status_code == requests.codes.not_found:
-            raise WhatsAppContactNotFound
+
+        status = response.status_code
+
+        # Check known possible errors, given the little information we receive
+        # from Turn when something goes wrong.
+        if status == requests.codes.not_found:
+            # WhatsApp user contact not found
+
+            errors = self.collect_error_strings(response)
+            raise WhatsAppContactNotFoundError(errors)
+        elif status == requests.codes.bad_request:
+            # Poorly formed text param will cause a bad request
+            # TODO check this before attempting to hit WA
+
+            errors = self.collect_error_strings(response)
+            raise WhatsAppBadRequestErrro(errors)
+        elif status == requests.codes.forbidden:
+            # Caused by bad token
+            # NOTE no json response on this, no additional info to pass upwards
+
+            raise WhatsAppAuthenticationError
+        elif "errors" in response.json():
+            # If we didn't more accurately catch anything that errored, but
+            # the request has errors, just raise a more generic exception
+            # with whatever information was received from Turn
+
+            errors = self.collect_error_strings(response)
+            raise WhatsAppUnknownError(errors)
+
+        # TODO handle malformed response data
+        return response.json()["messages"][0]["id"]
 
     def send_templated_message(self, whatsapp_id, namespace, name, language, template_params=[]):
         """
