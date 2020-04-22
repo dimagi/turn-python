@@ -12,3 +12,7 @@ class WhatsAppAuthenticationError(Exception):
 
 class WhatsAppUnknownError(Exception):
     pass
+
+
+class WhatsAppTemplateNotFoundError(Exception):
+    pass
