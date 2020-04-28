@@ -2,7 +2,8 @@ import os
 import requests
 import json
 
-from turn.exceptions import *
+from turn.exceptions import WhatsAppContactNotFoundError, WhatsAppBadRequestError,  \
+    WhatsAppAuthenticationError, WhatsAppUnknownError, WhatsAppTemplateNotFoundError
 
 
 class TurnRequest:
@@ -28,8 +29,10 @@ class TurnRequest:
         )
 
     def get_error(self, response):
-        if len(response.json()["errors"]):
+        try:
             return response.json()["errors"][0]
+        except (KeyError, IndexError):
+            return None
 
 
 class TurnContacts(TurnRequest):
@@ -86,7 +89,7 @@ class TurnMessages(TurnRequest):
             # Poorly formed text param will cause a bad request
 
             error = self.get_error(response)
-            raise WhatsAppBadRequestErrro(error["details"])
+            raise WhatsAppBadRequestError(error["details"])
         elif status == requests.codes.forbidden:
             # Caused by bad token
             # No JSON response on this, no additional info to pass upwards
