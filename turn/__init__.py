@@ -2,7 +2,8 @@ import os
 import requests
 import json
 
-from turn.exceptions import WhatsAppContactNotFound
+from turn.exceptions import WhatsAppContactNotFoundError, WhatsAppBadRequestError,  \
+    WhatsAppAuthenticationError, WhatsAppUnknownError, WhatsAppTemplateNotFoundError
 
 
 class TurnRequest:
@@ -27,19 +28,40 @@ class TurnRequest:
             data=json.dumps(data) if data is not None else None,
         )
 
+    def get_error(self, response):
+        try:
+            return response.json()["errors"][0]
+        except (KeyError, IndexError):
+            return None
+
 
 class TurnContacts(TurnRequest):
     endpoint_name = "contacts"
 
     def get_whatsapp_id(self, number):
         response = self.do_request(data={"blocking": "wait", "contacts": [number]})
+        status = response.status_code
+
+        if status == requests.codes.not_found:
+            # WhatsApp user contact not found
+
+            error = self.get_error(response)
+            raise WhatsAppContactNotFoundError(error["details"])
+        elif "errors" in response.json():
+            # If we didn't more accurately catch anything that errored, but
+            # the request has errors, just raise a more generic exception
+            # with whatever information was received from Turn
+
+            error = self.get_error(response)
+            raise WhatsAppUnknownError(error["details"])
+
         try:
             if response.json()["contacts"][0]["input"] == number:
                 return response.json()["contacts"][0]["wa_id"]
             else:
-                raise WhatsAppContactNotFound
+                raise WhatsAppContactNotFoundError
         except KeyError:
-            raise WhatsAppContactNotFound
+            raise WhatsAppContactNotFoundError
 
 
 class TurnMessages(TurnRequest):
@@ -54,10 +76,35 @@ class TurnMessages(TurnRequest):
                 "text": {"body": text}
             }
         )
-        if response.status_code == requests.codes.ok:
-            return response.json()["messages"][0]["id"]
-        elif response.status_code == requests.codes.not_found:
-            raise WhatsAppContactNotFound
+        status = response.status_code
+
+        # Check known possible errors, given the little information we receive
+        # from Turn when something goes wrong.
+        if status == requests.codes.not_found:
+            # WhatsApp user contact not found
+
+            error = self.get_error(response)
+            raise WhatsAppContactNotFoundError(error["details"])
+        elif status == requests.codes.bad_request:
+            # Poorly formed text param will cause a bad request
+
+            error = self.get_error(response)
+            raise WhatsAppBadRequestError(error["details"])
+        elif status == requests.codes.forbidden:
+            # Caused by bad token
+            # No JSON response on this, no additional info to pass upwards
+
+            raise WhatsAppAuthenticationError
+        elif "errors" in response.json():
+            # If we didn't more accurately catch anything that errored, but
+            # the request has errors, just raise a more generic exception
+            # with whatever information was received from Turn
+
+            error = self.get_error(response)
+            raise WhatsAppUnknownError(error["details"])
+
+        # TODO handle malformed response data
+        return response.json()["messages"][0]["id"]
 
     def send_templated_message(self, whatsapp_id, namespace, name, language, template_params=[]):
         """
@@ -76,6 +123,8 @@ class TurnMessages(TurnRequest):
 
         template_params: A list of the strings to use for filling in the template.
         Currently does not support currency or date_time params.
+        Too few and message is sent without filling in template values, too many
+        and only the number that are required are used when sending message.
         """
 
         localizable_params = [{"default": param} for param in template_params]
@@ -95,11 +144,40 @@ class TurnMessages(TurnRequest):
                 }
             }
         )
+        status = response.status_code
 
-        if response.status_code == requests.codes.ok:
-            return response.json()["messages"][0]["id"]
-        elif response.status_code == requests.codes.not_found:
-            raise WhatsAppContactNotFound
+        # Check known possible errors, given the little information we receive
+        # from Turn when something goes wrong.
+        if status == requests.codes.not_found:
+            error = self.get_error(response)
+
+            # For templates, not found can mean either a template or user,
+            # this is distinguished by the error code received
+
+            if error["code"] == 1006:
+                # 1006 is WhatsApp user contact not found
+                raise WhatsAppContactNotFoundError(error["details"])
+            elif error["code"] == -1:
+                # -1 is returned when template namespace or element name
+                # are not found
+                raise WhatsAppTemplateNotFoundError(error["details"])
+            else:
+                raise WhatsAppUnknownError(error["details"])
+        elif status == requests.codes.forbidden:
+            # Caused by bad token
+            # No JSON response on this, no additional info to pass upwards
+
+            raise WhatsAppAuthenticationError
+        elif "errors" in response.json():
+            # If we didn't more accurately catch anything that errored, but
+            # the request has errors, just raise a more generic exception
+            # with whatever information was received from Turn
+
+            error = self.get_error(response)
+            raise WhatsAppUnknownError(error["details"])
+
+        # TODO handle malformed response data
+        return response.json()["messages"][0]["id"]
 
 
 class TurnClient:
