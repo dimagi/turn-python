@@ -1,18 +1,22 @@
-class WhatsAppContactNotFoundError(Exception):
+class TurnException(Exception):
     pass
 
 
-class WhatsAppBadRequestError(Exception):
+class WhatsAppContactNotFoundError(TurnException):
     pass
 
 
-class WhatsAppAuthenticationError(Exception):
+class WhatsAppBadRequestError(TurnException):
     pass
 
 
-class WhatsAppUnknownError(Exception):
+class WhatsAppAuthenticationError(TurnException):
     pass
 
 
-class WhatsAppTemplateNotFoundError(Exception):
+class WhatsAppUnknownError(TurnException):
+    pass
+
+
+class WhatsAppTemplateNotFoundError(TurnException):
     pass
