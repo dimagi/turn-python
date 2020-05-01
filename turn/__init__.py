@@ -2,8 +2,13 @@ import os
 import requests
 import json
 
-from turn.exceptions import WhatsAppContactNotFoundError, WhatsAppBadRequestError,  \
-    WhatsAppAuthenticationError, WhatsAppUnknownError, WhatsAppTemplateNotFoundError
+from turn.exceptions import (
+    WhatsAppContactNotFoundError,
+    WhatsAppBadRequestError,
+    WhatsAppAuthenticationError,
+    WhatsAppUnknownError,
+    WhatsAppTemplateNotFoundError,
+)
 
 
 class TurnRequest:
@@ -73,7 +78,7 @@ class TurnMessages(TurnRequest):
                 "to": whatsapp_id,
                 "recipient_type": "individual",
                 "type": "text",
-                "text": {"body": text}
+                "text": {"body": text},
             }
         )
         status = response.status_code
@@ -136,12 +141,9 @@ class TurnMessages(TurnRequest):
                 "hsm": {
                     "namespace": namespace,
                     "element_name": name,
-                    "language": {
-                        "code": language,
-                        "policy": "deterministic",
-                    },
-                    "localizable_params": localizable_params
-                }
+                    "language": {"code": language, "policy": "deterministic"},
+                    "localizable_params": localizable_params,
+                },
             }
         )
         status = response.status_code
@@ -197,9 +199,7 @@ class TurnBusinessManagementRequest:
         self.token = token
 
     def params(self):
-        return {
-            "access_token": self.token
-        }
+        return {"access_token": self.token}
 
     def do_request(self, data=None):
         return requests.request(
@@ -208,7 +208,7 @@ class TurnBusinessManagementRequest:
             # Only send data if passed in, but if it's a query that
             # needs the data field, then auth has to be in here and not params
             data=data if data is not None else None,
-            params=self.params() if data is None else None
+            params=self.params() if data is None else None,
         )
 
 
@@ -216,7 +216,7 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
     endpoint_name = "message_templates"
 
     def get_message_templates(self):
-        self.method = 'GET'
+        self.method = "GET"
         response = self.do_request()
 
         if response.status_code == requests.codes.ok:
@@ -233,14 +233,11 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
 
         body: Text for body of the template.
         """
-        self.method = 'POST'
+        self.method = "POST"
 
         # NOTE: Turn only supports the body component, and doesn't allow
         # header or footer components to be sent.
-        components = [{
-            "type": "BODY",
-            "text": body
-        }]
+        components = [{"type": "BODY", "text": body}]
 
         response = self.do_request(
             data={
@@ -248,7 +245,7 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
                 "category": category,
                 "components": json.dumps(components),
                 "access_token": self.token,
-                "language": "en_US"
+                "language": "en_US",
             }
         )
 
