@@ -14,7 +14,6 @@ from turn.exceptions import (
 class TurnRequest:
     base_url = "https://whatsapp.turn.io/v1/"
     endpoint_name = None
-    method = "POST"
 
     def __init__(self, token):
         self.token = token
@@ -25,12 +24,33 @@ class TurnRequest:
             "Content-Type": "application/json",
         }
 
-    def do_request(self, data=None):
+    @property
+    def url(self):
+        return f"{self.base_url}{self.endpoint_name}"
+
+    def _make_request(self, method, url, data=None):
         return requests.request(
-            self.method,
-            f"{self.base_url}{self.endpoint_name}",
+            method,
+            url,
             headers=self.headers(),
+            data=data,
+        )
+
+    def _post(self, data=None):
+        return self._make_request(
+            method="POST",
+            url=self.url,
             data=json.dumps(data) if data is not None else None,
+        )
+
+    def _get(self, resource):
+        url = self.url
+        if resource:
+            url = f"{self.url}/{resource}"
+
+        return self._make_request(
+            method="GET",
+            url=url,
         )
 
     def get_error(self, response):
@@ -44,7 +64,7 @@ class TurnContacts(TurnRequest):
     endpoint_name = "contacts"
 
     def get_whatsapp_id(self, number):
-        response = self.do_request(data={"blocking": "wait", "contacts": [number]})
+        response = self._post(data={"blocking": "wait", "contacts": [number]})
         status = response.status_code
 
         if status == requests.codes.not_found:
@@ -73,7 +93,7 @@ class TurnMessages(TurnRequest):
     endpoint_name = "messages"
 
     def send_text(self, whatsapp_id, text):
-        response = self.do_request(
+        response = self._post(
             data={
                 "to": whatsapp_id,
                 "recipient_type": "individual",
@@ -134,7 +154,7 @@ class TurnMessages(TurnRequest):
 
         localizable_params = [{"default": param} for param in template_params]
 
-        response = self.do_request(
+        response = self._post(
             data={
                 "to": whatsapp_id,
                 "type": "hsm",
@@ -182,11 +202,19 @@ class TurnMessages(TurnRequest):
         return response.json()["messages"][0]["id"]
 
 
+class TurnMedia(TurnRequest):
+    endpoint_name = "media"
+
+    def get_media(self, media_id):
+        return self._get(resource=media_id)
+
+
 class TurnClient:
     def __init__(self, token=None):
         token = token or os.environ.get("TURN_AUTH_TOKEN")
         self.contacts = TurnContacts(token)
         self.messages = TurnMessages(token)
+        self.media = TurnMedia(token)
 
 
 class TurnBusinessManagementRequest:
@@ -216,7 +244,6 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
     endpoint_name = "message_templates"
 
     def get_message_templates(self):
-        self.method = "GET"
         response = self.do_request()
 
         if response.status_code == requests.codes.ok:

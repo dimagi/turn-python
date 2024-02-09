@@ -14,7 +14,17 @@ def test_send_message_success():
     client = TurnClient(token="123")
     message_id = client.messages.send_text(whatsapp_id="123321", text="Hi there")
     assert message_id == expected_message_id
+
+@responses.activate
+def test_get_media():
+    media_id="123"
+    responses.add(
+        responses.Response(
+            method="GET",
+            url=f"{TurnRequest.base_url}media/{media_id}",
+            body=b'some-binary',
         )
     )
     client = TurnClient(token="123")
-    client.messages.send_text(whatsapp_id="123321", text="Hi there")
+    response = client.media.get_media(media_id=media_id)
+    assert response.content.decode() == "some-binary"
