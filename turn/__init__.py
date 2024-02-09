@@ -216,7 +216,6 @@ class TurnClient:
 class TurnBusinessManagementRequest:
     base_url = "https://whatsapp.turn.io/v3.3"
     endpoint_name = None
-    method = None
 
     def __init__(self, business_id, token):
         self.business_id = business_id
@@ -225,9 +224,9 @@ class TurnBusinessManagementRequest:
     def params(self):
         return {"access_token": self.token}
 
-    def do_request(self, data=None):
+    def do_request(self, method, data=None):
         return requests.request(
-            self.method,
+            method,
             f"{self.base_url}/{self.business_id}/{self.endpoint_name}",
             # Only send data if passed in, but if it's a query that
             # needs the data field, then auth has to be in here and not params
@@ -240,7 +239,7 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
     endpoint_name = "message_templates"
 
     def get_message_templates(self):
-        response = self.do_request()
+        response = self.do_request(method="GET")
 
         if response.status_code == requests.codes.ok:
             return response.json()["data"]
@@ -256,13 +255,13 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
 
         body: Text for body of the template.
         """
-        self.method = "POST"
 
         # NOTE: Turn only supports the body component, and doesn't allow
         # header or footer components to be sent.
         components = [{"type": "BODY", "text": body}]
 
         response = self.do_request(
+            method="POST",
             data={
                 "name": name,
                 "category": category,
