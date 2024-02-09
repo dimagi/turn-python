@@ -44,13 +44,9 @@ class TurnRequest:
         )
 
     def _get(self, resource):
-        url = self.url
-        if resource:
-            url = f"{self.url}/{resource}"
-
         return self._make_request(
             method="GET",
-            url=url,
+            url=f"{self.url}/{resource}",
         )
 
     def get_error(self, response):
