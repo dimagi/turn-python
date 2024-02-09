@@ -5,14 +5,14 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="turn-python",
-    version="0.0.2",
+    version="0.1.0",
     author="Dimagi, inc",
     author_email="dev@dimagi.com",
     description="A python package for the Turn.io WhatsApp API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/dimagi/turn-python/",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=("tests",)),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

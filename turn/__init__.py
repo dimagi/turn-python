@@ -14,7 +14,6 @@ from turn.exceptions import (
 class TurnRequest:
     base_url = "https://whatsapp.turn.io/v1/"
     endpoint_name = None
-    method = "POST"
 
     def __init__(self, token):
         self.token = token
@@ -25,12 +24,29 @@ class TurnRequest:
             "Content-Type": "application/json",
         }
 
-    def do_request(self, data=None):
+    @property
+    def url(self):
+        return f"{self.base_url}{self.endpoint_name}"
+
+    def _make_request(self, method, url, data=None):
         return requests.request(
-            self.method,
-            f"{self.base_url}{self.endpoint_name}",
+            method,
+            url,
             headers=self.headers(),
+            data=data,
+        )
+
+    def _post(self, data=None):
+        return self._make_request(
+            method="POST",
+            url=self.url,
             data=json.dumps(data) if data is not None else None,
+        )
+
+    def _get(self, resource):
+        return self._make_request(
+            method="GET",
+            url=f"{self.url}/{resource}",
         )
 
     def get_error(self, response):
@@ -44,7 +60,7 @@ class TurnContacts(TurnRequest):
     endpoint_name = "contacts"
 
     def get_whatsapp_id(self, number):
-        response = self.do_request(data={"blocking": "wait", "contacts": [number]})
+        response = self._post(data={"blocking": "wait", "contacts": [number]})
         status = response.status_code
 
         if status == requests.codes.not_found:
@@ -73,7 +89,7 @@ class TurnMessages(TurnRequest):
     endpoint_name = "messages"
 
     def send_text(self, whatsapp_id, text):
-        response = self.do_request(
+        response = self._post(
             data={
                 "to": whatsapp_id,
                 "recipient_type": "individual",
@@ -134,7 +150,7 @@ class TurnMessages(TurnRequest):
 
         localizable_params = [{"default": param} for param in template_params]
 
-        response = self.do_request(
+        response = self._post(
             data={
                 "to": whatsapp_id,
                 "type": "hsm",
@@ -182,17 +198,24 @@ class TurnMessages(TurnRequest):
         return response.json()["messages"][0]["id"]
 
 
+class TurnMedia(TurnRequest):
+    endpoint_name = "media"
+
+    def get_media(self, media_id):
+        return self._get(resource=media_id)
+
+
 class TurnClient:
     def __init__(self, token=None):
         token = token or os.environ.get("TURN_AUTH_TOKEN")
         self.contacts = TurnContacts(token)
         self.messages = TurnMessages(token)
+        self.media = TurnMedia(token)
 
 
 class TurnBusinessManagementRequest:
     base_url = "https://whatsapp.turn.io/v3.3"
     endpoint_name = None
-    method = None
 
     def __init__(self, business_id, token):
         self.business_id = business_id
@@ -201,9 +224,9 @@ class TurnBusinessManagementRequest:
     def params(self):
         return {"access_token": self.token}
 
-    def do_request(self, data=None):
+    def do_request(self, method, data=None):
         return requests.request(
-            self.method,
+            method,
             f"{self.base_url}/{self.business_id}/{self.endpoint_name}",
             # Only send data if passed in, but if it's a query that
             # needs the data field, then auth has to be in here and not params
@@ -216,8 +239,7 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
     endpoint_name = "message_templates"
 
     def get_message_templates(self):
-        self.method = "GET"
-        response = self.do_request()
+        response = self.do_request(method="GET")
 
         if response.status_code == requests.codes.ok:
             return response.json()["data"]
@@ -233,13 +255,13 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
 
         body: Text for body of the template.
         """
-        self.method = "POST"
 
         # NOTE: Turn only supports the body component, and doesn't allow
         # header or footer components to be sent.
         components = [{"type": "BODY", "text": body}]
 
         response = self.do_request(
+            method="POST",
             data={
                 "name": name,
                 "category": category,
