@@ -11,7 +11,6 @@ from turn.exceptions import (
 )
 
 
-
 class TurnRequest:
     base_url = "https://whatsapp.turn.io/v1/"
     endpoint_name = None
@@ -128,7 +127,9 @@ class TurnMessages(TurnRequest):
         # TODO handle malformed response data
         return response.json()["messages"][0]["id"]
 
-    def send_templated_message(self, whatsapp_id, namespace, name, language, template_params=[]):
+    def send_templated_message(
+        self, whatsapp_id, namespace, name, language, template_params=[]
+    ):
         """
         whatsapp_id: The whatsapp_id or whatsapp_group_id to send the message to.
 
@@ -206,9 +207,10 @@ class TurnMessages(TurnRequest):
             "to": whatsapp_id,
             "recipient_type": "individual",
             "type": "audio",
-            "audio": {"id": media_id}
+            "audio": {"id": media_id},
         }
         return self._post(data=data)
+
 
 class TurnMedia(TurnRequest):
     endpoint_name = "media"
@@ -221,11 +223,11 @@ class TurnMedia(TurnRequest):
             method="POST",
             url=self.url,
             data=media_content,
-            extra_headers={"Content-Type": content_type}
+            extra_headers={"Content-Type": content_type},
         )
 
         return response.json()["media"][0]["id"]
-    
+
 
 class TurnBusinessManagementRequest:
     base_url = "https://whatsapp.turn.io/v3.3"
@@ -282,7 +284,7 @@ class TurnMessageTemplates(TurnBusinessManagementRequest):
                 "components": json.dumps(components),
                 "access_token": self.token,
                 "language": "en_US",
-            }
+            },
         )
 
         if response.status_code == requests.codes.created:
