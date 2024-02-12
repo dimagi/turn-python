@@ -28,11 +28,11 @@ class TurnRequest:
     def url(self):
         return f"{self.base_url}{self.endpoint_name}"
 
-    def _make_request(self, method, url, data=None):
+    def _make_request(self, method, url, data=None, extra_headers={}):
         return requests.request(
             method,
             url,
-            headers=self.headers(),
+            headers=self.headers() | extra_headers,
             data=data,
         )
 
@@ -197,12 +197,33 @@ class TurnMessages(TurnRequest):
         # TODO handle malformed response data
         return response.json()["messages"][0]["id"]
 
+    def send_audio(self, whatsapp_id, media_id):
+        """Sends an audio message to the user. You need to first upload the media using
+        `client.media.upload_media(..)`
+        """
+        data = {
+            "to": whatsapp_id,
+            "recipient_type": "individual",
+            "type": "audio",
+            "audio": {"id": media_id}
+        }
+        return self._post(data=data)
 
 class TurnMedia(TurnRequest):
     endpoint_name = "media"
 
     def get_media(self, media_id):
         return self._get(resource=media_id)
+
+    def upload_media(self, media_content, content_type):
+        response = self._make_request(
+            method="POST",
+            url=self.url,
+            data=media_content,
+            extra_headers={"Content-Type": content_type}
+        )
+
+        return response.json()["media"][0]["id"]
 
 
 class TurnClient:
