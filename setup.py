@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="turn-python",
-    version="0.2.0",
+    version="1.0.0",
     author="Dimagi, inc",
     author_email="dev@dimagi.com",
     description="A python package for the Turn.io WhatsApp API",
@@ -18,5 +18,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.6",
 )
